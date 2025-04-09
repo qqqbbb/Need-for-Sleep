@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+	<AssemblyName>Need_for_Sleep</AssemblyName>
+    <Version>1.0.0</Version>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <LangVersion>11</LangVersion>
+	<RootNamespace>Need_for_Sleep</RootNamespace>
+
+    <RestoreAdditionalProjectSources>
+      https://api.nuget.org/v3/index.json;
+      https://nuget.bepinex.dev/v3/index.json;
+    </RestoreAdditionalProjectSources>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BepInEx.Analyzers" Version="1.*" PrivateAssets="all" />
+    <PackageReference Include="BepInEx.Core" Version="5.4.21" />
+    <PackageReference Include="BepInEx.PluginInfoProps" Version="1.1.0" />
+    <PackageReference Include="UnityEngine.Modules" Version="2019.4.36" IncludeAssets="compile" />
+    <PackageReference Include="Subnautica.GameLibs" Version="71288.0.0-r.0" />
+    <PackageReference Include="PolySharp" Version="1.13.1" />
+    <PackageReference Include="Subnautica.Nautilus" Version="1.*-*" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework.TrimEnd(`0123456789`))' == 'net'">
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.2" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Localization\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="PlatformInputDefault">
+      <HintPath>C:\GAMES\Subnautica\Subnautica_Data\Managed\PlatformInputDefault.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Exec Command="mkdir &quot;D:\SteamLibrary\steamapps\common\Subnautica\BepInEx\plugins\NeedForSleep&quot;&#xD;&#xA;copy /Y &quot;$(TargetPath)&quot; &quot;D:\SteamLibrary\steamapps\common\Subnautica\BepInEx\plugins\NeedForSleep\$(TargetFileName)&quot;&#xD;&#xA;&#xD;&#xA;mkdir &quot;D:\SteamLibrary\steamapps\common\Subnautica\BepInEx\plugins\NeedForSleep\Localization&quot;&#xD;&#xA;copy /Y &quot;$(ProjectDir)\Localization\*.*&quot; &quot;D:\SteamLibrary\steamapps\common\Subnautica\BepInEx\plugins\NeedForSleep\Localization&quot;&#xD;&#xA; &#xD;&#xA;&#xD;&#xA;mkdir &quot;C:\GAMES\Subnautica\BepInEx\plugins\NeedForSleep&quot;&#xD;&#xA;copy /Y &quot;$(TargetPath)&quot; &quot;C:\GAMES\Subnautica\BepInEx\plugins\NeedForSleep\$(TargetFileName)&quot;&#xD;&#xA;&#xD;&#xA;mkdir &quot;C:\GAMES\Subnautica\BepInEx\plugins\NeedForSleep\Localization&quot;&#xD;&#xA;copy /Y &quot;$(ProjectDir)\Localization\*.*&quot; &quot;C:\GAMES\Subnautica\BepInEx\plugins\NeedForSleep\Localization&quot;&#xD;&#xA; " />
+  </Target>
+</Project>
