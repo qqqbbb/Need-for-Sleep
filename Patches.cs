@@ -29,7 +29,6 @@ namespace Need_for_Sleep
         static Vector3 myBedLocalPos = new Vector3(0, -2, 0);
         static int checkLayerMask = ~(1 << LayerMask.NameToLayer("Player") | 1 << LayerMask.NameToLayer("Trigger"));
         static float sleepDurationMult = 1;
-        private static bool textInput;
         static HashSet<Button> delayableButtons = new HashSet<Button> { Button.MoveForward, Button.MoveBackward, Button.MoveLeft, Button.MoveRight, Button.MoveDown, Button.MoveUp, Button.Jump, Button.PDA, Button.Deconstruct, Button.LeftHand, Button.RightHand, Button.CycleNext, Button.CyclePrev, Button.Slot1, Button.Slot2, Button.Slot3, Button.Slot4, Button.Slot5, Button.AltTool, Button.Reload, Button.Sprint, Button.AutoMove, Button.LookDown, Button.LookUp, Button.LookRight, Button.LookLeft };
         private static bool seaglideEquipped;
         private static bool lookingAtGround;
@@ -318,7 +317,7 @@ namespace Need_for_Sleep
             [HarmonyPostfix, HarmonyPatch("Update")]
             static void UpdatePostfix(Player __instance)
             {
-                if (Main.gameLoaded == false || __instance.cinematicModeActive || Time.timeScale == 0 || __instance.pda.isInUse || textInput || __instance.mode != Player.Mode.Normal)
+                if (Main.gameLoaded == false || __instance.cinematicModeActive || Time.timeScale == 0 || __instance.pda.isInUse || __instance.mode != Player.Mode.Normal)
                     return;
 
                 float x = MainCamera.camera.transform.rotation.eulerAngles.x;
@@ -369,13 +368,13 @@ namespace Need_for_Sleep
             TaskResult<GameObject> result = new TaskResult<GameObject>();
             yield return Util.Spawn(TechType.NarrowBed, result, GetBedPosition());
             GameObject bedGO = result.Get();
-            bedGO.transform.SetParent(player.transform);
             bedGO.name = "NeedForSleepBed";
             Transform t = bedGO.transform.Find("collisions");
             UnityEngine.Object.Destroy(t.gameObject);
             t = bedGO.transform.Find("bed_narrow");
             UnityEngine.Object.Destroy(t.gameObject);
             myBed = bedGO.GetComponent<Bed>();
+            bedGO.transform.SetParent(player.transform);
             var components = bedGO.GetComponents<Component>();
             foreach (var c in components)
             {
@@ -532,23 +531,6 @@ namespace Need_for_Sleep
             }
         }
 
-        [HarmonyPatch(typeof(uGUI_InputGroup))]
-        class uGUI_InputGroup_Patch
-        {
-            [HarmonyPostfix, HarmonyPatch("OnSelect")]
-            static void OnSelectPostfix(uGUI_InputGroup __instance)
-            {
-                //AddDebug("uGUI_InputGroup OnSelect");
-                textInput = true;
-            }
-            [HarmonyPostfix, HarmonyPatch("OnDeselect")]
-            static void OnDeselectPostfix(uGUI_InputGroup __instance)
-            {
-                //AddDebug("uGUI_InputGroup OnDeselect");
-                textInput = false;
-            }
-        }
-
         [HarmonyPatch(typeof(CrawlerAttackLastTarget))]
         class CrawlerAttackLastTarget_Patch
         {
@@ -589,7 +571,7 @@ namespace Need_for_Sleep
 
                 //AddDebug($"GetMoveDirection {__result}");
             }
-            [HarmonyPrefix, HarmonyPatch("SetAutoMove")]
+            //[HarmonyPrefix, HarmonyPatch("SetAutoMove")]
             static bool SetAutoMovePrefix(GameInput __instance, bool _autoMove)
             {
                 if (_autoMove && sleepDebt > 0)

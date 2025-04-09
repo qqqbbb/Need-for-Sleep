@@ -24,7 +24,7 @@ namespace Need_for_Sleep
     {
         public const string PLUGIN_GUID = "qqqbbb.subnautica.NeedForSleep";
         public const string PLUGIN_NAME = "Need for Sleep";
-        public const string PLUGIN_VERSION = "1.0.0";
+        public const string PLUGIN_VERSION = "1.0.1";
         public static ManualLogSource logger { get; private set; }
         static string configPath = Paths.ConfigPath + Path.DirectorySeparatorChar + PLUGIN_NAME + Path.DirectorySeparatorChar + "Config.cfg";
         public static ConfigFile config;
@@ -42,8 +42,7 @@ namespace Need_for_Sleep
         {
             logger = base.Logger;
             Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly(), $"{PLUGIN_GUID}");
-            Logger.LogInfo($"Plugin {PLUGIN_GUID} {PLUGIN_VERSION} is loaded! ");
-            SaveUtils.RegisterOnQuitEvent(OnApplicationQuit);
+            SaveUtils.RegisterOnQuitEvent(OnQuit);
             SaveUtils.RegisterOnFinishLoadingEvent(LoadedGameSetup);
             LanguageHandler.RegisterLocalizationFolder();
             config = new ConfigFile(configPath, false);
@@ -51,6 +50,7 @@ namespace Need_for_Sleep
             options = new OptionsMenu();
             OptionsPanelHandler.RegisterModOptions(options);
             GetLoadedMods();
+            Logger.LogInfo($"Plugin {PLUGIN_GUID} {PLUGIN_VERSION} is loaded! ");
             //SceneManager.sceneLoaded += new UnityAction<Scene, LoadSceneMode>(OnSceneLoaded);
         }
 
@@ -60,9 +60,9 @@ namespace Need_for_Sleep
             Patches.Setup();
         }
 
-        private void OnApplicationQuit()
+        private void OnQuit()
         {
-            //Logger.LogDebug("Need for Sleep OnApplicationQuit");
+            //Logger.LogDebug("Need for Sleep OnQuit");
             Patches.ResetVars();
             gameLoaded = false;
         }
@@ -70,18 +70,10 @@ namespace Need_for_Sleep
         [HarmonyPatch(typeof(SaveLoadManager))]
         class SaveLoadManager_Patch
         {
-            [HarmonyPrefix]
-            [HarmonyPatch("SaveToDeepStorageAsync", new Type[0])]
+            [HarmonyPrefix, HarmonyPatch("SaveToDeepStorageAsync", new Type[0])]
             public static void SaveToDeepStorageAsyncPrefix(SaveLoadManager __instance)
             {
                 Patches.SaveTimeWokeUp();
-            }
-            [HarmonyPostfix]
-            [HarmonyPatch("SaveToDeepStorageAsync", new Type[0])]
-            public static void SaveToDeepStorageAsyncPostfix(SaveLoadManager __instance)
-            { // runs after nautilus SaveEvent
-              //AddDebug("SaveToDeepStorageAsync");
-                config.Save();
             }
         }
 
