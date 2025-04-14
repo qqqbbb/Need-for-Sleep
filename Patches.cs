@@ -209,7 +209,7 @@ namespace Need_for_Sleep
 
         private static void StartSleep()
         {
-            //sleepStartTime = (float)DayNightCycle.main.GetDay();
+            sleepStartTime = (float)DayNightCycle.main.GetDay();
             //AddDebug($"StartSleep sleepDebt {sleepDebt} sleepStartTime {sleepStartTime}");
             SetHungerUpdateTime();
             UpdateSleepDebt();
@@ -399,7 +399,6 @@ namespace Need_for_Sleep
         {
             //AddDebug($"StartSleep SpawnBed ");
             TaskResult<GameObject> result = new TaskResult<GameObject>();
-            //yield return Util.Spawn(TechType.NarrowBed, result, GetBedPosition());
             yield return CraftData.InstantiateFromPrefabAsync(TechType.NarrowBed, result);
             GameObject bedGO = result.Get();
             bedGO.transform.position = GetBedPosition();
