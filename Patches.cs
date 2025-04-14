@@ -67,8 +67,7 @@ namespace Need_for_Sleep
 
         private static bool IsLookingAtGround()
         {
-            Player player = Player.main;
-            if (Main.gameLoaded == false || player.cinematicModeActive || Time.timeScale == 0 || player.pda.isInUse || player.GetMode() != Player.Mode.Normal)
+            if (IsStandingStill() == false)
                 return false;
 
             if (lookingAtBed)
@@ -79,7 +78,6 @@ namespace Need_for_Sleep
             float x = MainCamera.camera.transform.rotation.eulerAngles.x;
             return x > 85 && x < 90;
         }
-
         private static float GetTimeWokeUp()
         {
             float day = (float)DayNightCycle.main.GetDay();
@@ -87,24 +85,14 @@ namespace Need_for_Sleep
             //Main.logger.LogDebug($"GetTimeWokeUp day {day} timeLastSleep {timeLastSleep}");
             if (timeLastSleep > day || timeLastSleep == 0)
                 return day;
-
             return timeLastSleep;
-        }
-
-        public static void SaveTimeWokeUp()
-        {
-            Player.main.timeLastSleep = timeWokeUp;
-            //AddDebug($"SaveTimeWokeUp {Player.main.timeLastSleep}");
-            //Main.logger.LogDebug($"SaveTimeWokeUp {Player.main.timeLastSleep}");
         }
 
         private static bool CanSleep()
         {
-            Player player = Player.main;
-            if (!Main.gameLoaded || player.mode != Player.Mode.Normal || player.IsUnderwaterForSwimming() || player.cinematicModeActive || player.pda.isInUse || !player.groundMotor.grounded || player.playerController.velocity != default || DayNightCycle.main.IsInSkipTimeMode())
-            {
+            if (IsStandingStill() == false)
                 return false;
-            }
+
             if (Config.calorieBurnMultSleep.Value > 0)
             {
                 if (IsTooThirstyToSleep() || IsTooHungryToSleep())
@@ -117,6 +105,12 @@ namespace Need_for_Sleep
             //    AddMessage(Language.main.Get("BedSleepTimeOut"));
 
             return sleepDebt > 0;
+        }
+
+        private static bool IsStandingStill()
+        {
+            Player player = Player.main;
+            return Main.gameLoaded && player.mode == Player.Mode.Normal && player.IsUnderwaterForSwimming() == false && player.cinematicModeActive == false && player.pda.isInUse == false && player.groundMotor.grounded && player.playerController.velocity == default && DayNightCycle.main.IsInSkipTimeMode() == false;
         }
 
         private static bool IsTooThirstyToSleep()
@@ -324,7 +318,7 @@ namespace Need_for_Sleep
             static void UpdatePostfix(Player __instance)
             {
                 //if (Input.GetKey(KeyCode.R))
-                //    AddDebug($"GetCurrentLanguage  {Language.main.GetCurrentLanguage()}");
+                //AddDebug($"CanSleep  {CanSleep()}");
 
                 if (IsLookingAtGround())
                     OnBedHandHover(myBed);
@@ -351,8 +345,14 @@ namespace Need_for_Sleep
             DateTime dateTimeTired = DayNightCycle.ToGameDateTime(timeTired);
             DateTime dateTimeNow = DayNightCycle.ToGameDateTime(DayNightCycle.main.timePassedAsFloat);
             TimeSpan timeSpan = dateTimeTired - dateTimeNow;
-            //AddDebug($"GetHoursTillTired {timeSpan.TotalHours.ToString("0.0")} CeilToInt {Mathf.CeilToInt((float)timeSpan.TotalHours)}");
-            return Mathf.RoundToInt((float)timeSpan.TotalHours);
+            //if (Input.GetKeyDown(KeyCode.R))
+            //    AddDebug($"GetHoursTillTired {timeSpan.TotalHours.ToString("0.0")} RoundToInt {Mathf.RoundToInt((float)timeSpan.TotalHours)}");
+
+            int hours = Mathf.RoundToInt((float)timeSpan.TotalHours);
+            if (hours < 0) // sleep debt is yet to update
+                hours = 0;
+
+            return hours;
         }
 
         static string GetTiredText()
@@ -366,10 +366,17 @@ namespace Need_for_Sleep
             }
             //if (sleepDebt == 0 && Config.sleepAnytime.Value == false)
             //    return Language.main.Get("BedSleepTimeOut");
-            int hoursTillTired = GetHoursTillTired();
-            if (hoursTillTired < 1 && sleepDebt > 0)
+            if (sleepDebt > 0)
                 return Language.main.Get("NS_tired");
-            else if (hoursTillTired == 0 && sleepDebt == 0)
+
+            if (Config.showTimeTillTired.Value == false && sleepDebt == 0)
+                return Language.main.Get("BedSleepTimeOut");
+
+            int hoursTillTired = GetHoursTillTired();
+            //if (Input.GetKeyDown(KeyCode.R))
+            //    AddDebug($"sleepDebt {sleepDebt} hoursTillTired {hoursTillTired} ");
+
+            if (hoursTillTired == 0 && sleepDebt == 0)
                 hoursTillTired = 1;
 
             string hours = Language.main.GetFormat("TimeFormatHoursMinutes", hoursTillTired, 0);
