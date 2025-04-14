@@ -28,8 +28,6 @@ namespace Need_for_Sleep
                 {
                     //uGUI_PlayerSleep.main.fadeInSpeed *= .5f;
                     //uGUI_PlayerSleep.main.StartSleepScreen();
-                    //AddDebug($"UnityEngine.Random.value {UnityEngine.Random.value}");
-                    //GetConsistantHungerUpdateTime();
                     //AddDebug("timePassed " + DayNightCycle.main.timePassedAsFloat);
                 }
                 if (Input.GetKeyDown(KeyCode.V))

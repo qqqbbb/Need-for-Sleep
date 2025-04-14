@@ -24,7 +24,7 @@ namespace Need_for_Sleep
     {
         public const string PLUGIN_GUID = "qqqbbb.subnautica.NeedForSleep";
         public const string PLUGIN_NAME = "Need for Sleep";
-        public const string PLUGIN_VERSION = "1.0.1";
+        public const string PLUGIN_VERSION = "1.1.0";
         public static ManualLogSource logger { get; private set; }
         static string configPath = Paths.ConfigPath + Path.DirectorySeparatorChar + PLUGIN_NAME + Path.DirectorySeparatorChar + "Config.cfg";
         public static ConfigFile config;
@@ -50,7 +50,7 @@ namespace Need_for_Sleep
             options = new OptionsMenu();
             OptionsPanelHandler.RegisterModOptions(options);
             GetLoadedMods();
-            Logger.LogInfo($"Plugin {PLUGIN_GUID} {PLUGIN_VERSION} is loaded! ");
+            Logger.LogInfo($"Plugin {PLUGIN_GUID} {PLUGIN_VERSION} is loaded ");
             //SceneManager.sceneLoaded += new UnityAction<Scene, LoadSceneMode>(OnSceneLoaded);
         }
 
@@ -65,16 +65,6 @@ namespace Need_for_Sleep
             //Logger.LogDebug("Need for Sleep OnQuit");
             Patches.ResetVars();
             gameLoaded = false;
-        }
-
-        [HarmonyPatch(typeof(SaveLoadManager))]
-        class SaveLoadManager_Patch
-        {
-            [HarmonyPrefix, HarmonyPatch("SaveToDeepStorageAsync", new Type[0])]
-            public static void SaveToDeepStorageAsyncPrefix(SaveLoadManager __instance)
-            {
-                Patches.SaveTimeWokeUp();
-            }
         }
 
         public static void GetLoadedMods()
