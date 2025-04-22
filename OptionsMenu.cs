@@ -18,6 +18,7 @@ namespace Need_for_Sleep
             AddItem(calorieBurnMultSleepSlider);
             AddItem(Config.sleepAnytime.ToModToggleOption());
             AddItem(Config.showTimeTillTired.ToModToggleOption());
+            AddItem(Config.sleepButton.ToModChoiceOption());
 
 
         }

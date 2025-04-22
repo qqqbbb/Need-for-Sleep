@@ -30,6 +30,8 @@ namespace Need_for_Sleep
         static int checkLayerMask = ~(1 << LayerMask.NameToLayer("Player") | 1 << LayerMask.NameToLayer("Trigger"));
         static float sleepDurationMult = 1;
         static HashSet<Button> delayableButtons = new HashSet<Button> { Button.MoveForward, Button.MoveBackward, Button.MoveLeft, Button.MoveRight, Button.MoveDown, Button.MoveUp, Button.Jump, Button.PDA, Button.Deconstruct, Button.LeftHand, Button.RightHand, Button.CycleNext, Button.CyclePrev, Button.Slot1, Button.Slot2, Button.Slot3, Button.Slot4, Button.Slot5, Button.AltTool, Button.Reload, Button.Sprint, Button.AutoMove, Button.LookDown, Button.LookUp, Button.LookRight, Button.LookLeft };
+        static Dictionary<Button, Config.SleepButton> sleepButtons = new Dictionary<Button, Config.SleepButton> { { Button.LeftHand, Config.SleepButton.Left_hand }, { Button.RightHand, Config.SleepButton.Right_hand }, { Button.Jump, Config.SleepButton.Jump }, { Button.Deconstruct, Config.SleepButton.Deconstruct }, { Button.AltTool, Config.SleepButton.Tool_alt_use }, { Button.Reload, Config.SleepButton.Reload }, { Button.Sprint, Config.SleepButton.Sprint } };
+        static Dictionary<Config.SleepButton, Button> sleepButtons_ = new Dictionary<Config.SleepButton, Button> { { Config.SleepButton.Left_hand, Button.LeftHand }, { Config.SleepButton.Right_hand, Button.RightHand }, { Config.SleepButton.Jump, Button.Jump }, { Config.SleepButton.Deconstruct, Button.Deconstruct }, { Config.SleepButton.Tool_alt_use, Button.AltTool }, { Config.SleepButton.Reload, Button.Reload }, { Config.SleepButton.Sprint, Button.Sprint } };
         private static bool seaglideEquipped;
         static private RadialBlurScreenFXController radialBlurControl;
         private static bool lookingAtBed;
@@ -38,11 +40,13 @@ namespace Need_for_Sleep
         private static float timeWokeUp;
         private static bool builderEquipped;
         private static Vector3 playerPosBeforeSleep;
+        private static bool clickingBed;
 
         public static void ResetVars()
         {
             speedMod = 1;
             sleepDebt = 0;
+            GameInput_Patch.delayedButton = Button.None;
         }
 
         public static void Setup()
@@ -76,16 +80,25 @@ namespace Need_for_Sleep
                 return false;
             }
             float x = MainCamera.camera.transform.rotation.eulerAngles.x;
-            return x > 85 && x < 90;
+            return x > 80 && x < 90;
         }
+
         private static float GetTimeWokeUp()
         {
             float day = (float)DayNightCycle.main.GetDay();
             float timeLastSleep = Player.main.timeLastSleep;
             //Main.logger.LogDebug($"GetTimeWokeUp day {day} timeLastSleep {timeLastSleep}");
-            if (timeLastSleep > day || timeLastSleep == 0)
+            if (timeLastSleep == 0 || timeLastSleep > day)
+            {
+                SaveTimeWokeUp(day);
                 return day;
+            }
             return timeLastSleep;
+        }
+
+        private static void SaveTimeWokeUp(float time)
+        {
+            Player.main.timeLastSleep = time;
         }
 
         private static bool CanSleep()
@@ -110,7 +123,7 @@ namespace Need_for_Sleep
         private static bool IsStandingStill()
         {
             Player player = Player.main;
-            return Main.gameLoaded && player.mode == Player.Mode.Normal && player.IsUnderwaterForSwimming() == false && player.cinematicModeActive == false && player.pda.isInUse == false && player.groundMotor.grounded && player.playerController.velocity == default && DayNightCycle.main.IsInSkipTimeMode() == false;
+            return Main.gameLoaded && Time.timeScale > 0 && player.mode == Player.Mode.Normal && player.IsUnderwaterForSwimming() == false && player.cinematicModeActive == false && player.pda.isInUse == false && player.groundMotor.grounded && player.playerController.velocity == default && DayNightCycle.main.IsInSkipTimeMode() == false;
         }
 
         private static bool IsTooThirstyToSleep()
@@ -177,7 +190,7 @@ namespace Need_for_Sleep
                 float timeSlept = day - sleepStartTime;
                 sleepDebt -= timeSlept;
                 timeWokeUp = day - (sleepDebt + GetSleepDebtThreshold());
-                Player.main.timeLastSleep = timeWokeUp;
+                SaveTimeWokeUp(timeWokeUp);
                 //Main.logger.LogDebug($"UpdateSleepDebtWakeUp day {day} timeSlept {timeSlept} timeWokeUp {timeWokeUp} sleepDebt {sleepDebt}");
                 UpdateSleepDebt();
                 forcedWakeUp = false;
@@ -185,7 +198,7 @@ namespace Need_for_Sleep
             else
             {
                 timeWokeUp = (float)DayNightCycle.main.GetDay();
-                Player.main.timeLastSleep = timeWokeUp;
+                SaveTimeWokeUp(timeWokeUp);
                 //Main.logger.LogDebug($"UpdateSleepDebtWakeUp timeWokeUp {timeWokeUp} sleepDebt {sleepDebt}");
                 UpdateSleepDebt();
             }
@@ -223,6 +236,7 @@ namespace Need_for_Sleep
             else
                 myBed.transform.SetParent(Player.main.currentSub.transform);
 
+            clickingBed = true;
             myBed.OnHandClick(Player.main.guiHand);
         }
 
@@ -321,7 +335,14 @@ namespace Need_for_Sleep
                 //AddDebug($"CanSleep  {CanSleep()}");
 
                 if (IsLookingAtGround())
+                {
                     OnBedHandHover(myBed);
+                    if (GameInput.GetButtonDown(sleepButtons_[Config.sleepButton.Value]))
+                    {
+                        if (CanSleep())
+                            StartSleepMyBed();
+                    }
+                }
             }
 
             [HarmonyPostfix, HarmonyPatch("OnTakeDamage")]
@@ -349,7 +370,7 @@ namespace Need_for_Sleep
             //    AddDebug($"GetHoursTillTired {timeSpan.TotalHours.ToString("0.0")} RoundToInt {Mathf.RoundToInt((float)timeSpan.TotalHours)}");
 
             int hours = Mathf.RoundToInt((float)timeSpan.TotalHours);
-            if (hours < 0) // sleep debt is yet to update
+            if (hours < 0)
                 hours = 0;
 
             return hours;
@@ -434,7 +455,7 @@ namespace Need_for_Sleep
             HandReticle.main.SetText(HandReticle.TextType.HandSubscript, GetTiredText(), false);
             if (CanSleep())
             {
-                HandReticle.main.SetText(HandReticle.TextType.Hand, bed.handText, true, Button.LeftHand);
+                HandReticle.main.SetText(HandReticle.TextType.Hand, bed.handText, true, sleepButtons_[Config.sleepButton.Value]);
                 HandReticle.main.SetIcon(HandReticle.IconType.Hand);
             }
         }
@@ -459,8 +480,25 @@ namespace Need_for_Sleep
             {
                 lookingAtBed = true;
                 OnBedHandHover(__instance);
+                if (GameInput.GetButtonDown(sleepButtons_[Config.sleepButton.Value]))
+                {
+                    if (CanSleep())
+                    {
+                        clickingBed = true;
+                        __instance.OnHandClick(hand);
+                    }
+                }
             }
-
+            [HarmonyPrefix, HarmonyPatch("OnHandClick")]
+            public static bool OnHandClickPrefix(Bed __instance, GUIHand hand)
+            {
+                if (clickingBed)
+                {
+                    clickingBed = false;
+                    return true;
+                }
+                return false;
+            }
             [HarmonyPrefix, HarmonyPatch("EnterInUseMode")]
             public static void EnterInUseModePrefix(Bed __instance, Player player)
             {
@@ -592,7 +630,7 @@ namespace Need_for_Sleep
         [HarmonyPatch(typeof(GameInput))]
         class GameInput_Patch
         {
-            static Button delayedButton = Button.None;
+            public static Button delayedButton = Button.None;
             static Button heldButtonWasDelayed = Button.None;
             static bool pressDelayedButton;
             private static bool pressDelayedHeldButton;
@@ -623,6 +661,7 @@ namespace Need_for_Sleep
 
                 return true;
             }
+
             [HarmonyPostfix, HarmonyPatch("GetButtonDown")]
             static void ScanInputsPostfix(GameInput __instance, Button button, ref bool __result)
             {
@@ -631,6 +670,7 @@ namespace Need_for_Sleep
 
                 if (__result)
                 {
+                    //AddDebug($"button {button} sleepButton {Config.sleepButton.Value} sleepButtons.ContainsKey(button) {sleepButtons.ContainsKey(button)} ");
                     if (Main.tweaksFixesLoaded)
                     {
                         if (button == Button.AltTool)
@@ -640,15 +680,9 @@ namespace Need_for_Sleep
                                 return;
                         }
                     }
-                    if (button == Button.LeftHand)
-                    {
+                    if (IsSleepButton(button) && IsLookingAtGround())
+                        return;
 
-                        if (IsLookingAtGround() && CanSleep())
-                        {
-                            StartSleepMyBed();
-                            return;
-                        }
-                    }
                     if (seaglideEquipped)
                     {
                         if (button == Button.RightHand || button == Button.AltTool)
@@ -700,6 +734,11 @@ namespace Need_for_Sleep
                 }
             }
 
+            private static bool IsSleepButton(Button button)
+            {
+                return sleepButtons.ContainsKey(button) && sleepButtons[button] == Config.sleepButton.Value;
+            }
+
             private static IEnumerator DelayInput(Button button, float delayTime)
             {
                 //AddDebug($"DelayInput {button}");
@@ -720,6 +759,9 @@ namespace Need_for_Sleep
             [HarmonyPostfix, HarmonyPatch("GetButtonHeld")]
             static void GetButtonHeldPostfix(GameInput __instance, Button button, ref bool __result)
             {
+                if (IsSleepButton(button) && IsLookingAtGround())
+                    return;
+
                 if (builderEquipped)
                 {
                     if (button == Button.LeftHand || button == Button.RightHand)
