@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using UnityEngine;
+using UnityStandardAssets.ImageEffects;
 using UWE;
 using static Bed;
 using static ErrorMessage;
@@ -20,7 +21,7 @@ namespace Need_for_Sleep
         public static bool sleeping;
         public static float speedMod = 1;
         public static float updateInterval = 10;
-        private const float oneHourDuration = DayNightCycle.kDayLengthSeconds / 24f;
+        const float oneHourDuration = DayNightCycle.kDayLengthSeconds / 24f;
         static Survival survival;
         static float sleepDebt;
         static float hungerUpdateTime;
@@ -33,20 +34,31 @@ namespace Need_for_Sleep
         static Dictionary<Button, Config.SleepButton> sleepButtons = new Dictionary<Button, Config.SleepButton> { { Button.LeftHand, Config.SleepButton.Left_hand }, { Button.RightHand, Config.SleepButton.Right_hand }, { Button.Jump, Config.SleepButton.Jump }, { Button.Deconstruct, Config.SleepButton.Deconstruct }, { Button.AltTool, Config.SleepButton.Tool_alt_use }, { Button.Reload, Config.SleepButton.Reload }, { Button.Sprint, Config.SleepButton.Sprint } };
         static Dictionary<Config.SleepButton, Button> sleepButtons_ = new Dictionary<Config.SleepButton, Button> { { Config.SleepButton.Left_hand, Button.LeftHand }, { Config.SleepButton.Right_hand, Button.RightHand }, { Config.SleepButton.Jump, Button.Jump }, { Config.SleepButton.Deconstruct, Button.Deconstruct }, { Config.SleepButton.Tool_alt_use, Button.AltTool }, { Config.SleepButton.Reload, Button.Reload }, { Config.SleepButton.Sprint, Button.Sprint } };
         private static bool seaglideEquipped;
-        static private RadialBlurScreenFXController radialBlurControl;
+        private static RadialBlurScreenFXController radialBlurControl;
         private static bool lookingAtBed;
         private static bool forcedWakeUp;
         private static float sleepStartTime;
         private static float timeWokeUp;
+        private static float forwardSprintModifierDefault;
         private static bool builderEquipped;
         private static Vector3 playerPosBeforeSleep;
         private static bool clickingBed;
+        private static bool setupDone;
+        private static float timeWalkStart;
+        private static float timeSprintStart;
+        private static float timeSwimStart;
+        private static bool checkingSleepButton;
+
 
         public static void ResetVars()
         {
             speedMod = 1;
             sleepDebt = 0;
             GameInput_Patch.delayedButton = Button.None;
+            timeWalkStart = 0;
+            timeSprintStart = 0;
+            timeSwimStart = 0;
+            setupDone = false;
         }
 
         public static void Setup()
@@ -63,22 +75,31 @@ namespace Need_for_Sleep
                 BasicText message = new BasicText();
                 message.ShowMessage("You should not use Need for Sleep mod with Enhanced Sleep mod", 10);
             }
+            setupDone = true;
             //float timeAwake = day - Player.main.timeLastSleep;
             //AddDebug("Setup time " + day);
             //AddDebug("Setup time woke up " + Player.main.timeLastSleep);
             //AddDebug("Setup timeAwake " + timeAwake);
         }
 
+        public static float GetSleepDebt()
+        {
+            if (GameModeUtils.IsInvisible())
+                return 0;
+
+            return sleepDebt * GetCoffeeMod();
+        }
+
         private static bool IsLookingAtGround()
         {
-            if (IsStandingStill() == false)
-                return false;
-
             if (lookingAtBed)
             {
                 lookingAtBed = false;
                 return false;
             }
+            if (IsStandingStill() == false)
+                return false;
+
             float x = MainCamera.camera.transform.rotation.eulerAngles.x;
             return x > 80 && x < 90;
         }
@@ -117,13 +138,13 @@ namespace Need_for_Sleep
             //if (notify && sleepDebt == 0)
             //    AddMessage(Language.main.Get("BedSleepTimeOut"));
 
-            return sleepDebt > 0;
+            return GetSleepDebt() > 0;
         }
 
         private static bool IsStandingStill()
         {
             Player player = Player.main;
-            return Main.gameLoaded && Time.timeScale > 0 && player.mode == Player.Mode.Normal && player.IsUnderwaterForSwimming() == false && player.cinematicModeActive == false && player.pda.isInUse == false && player.groundMotor.grounded && player.playerController.velocity == default && DayNightCycle.main.IsInSkipTimeMode() == false;
+            return setupDone && Time.timeScale > 0 && player.mode == Player.Mode.Normal && player.IsUnderwaterForSwimming() == false && player.cinematicModeActive == false && player.pda.isInUse == false && player.groundMotor.grounded && player.playerController.velocity == default && DayNightCycle.main.IsInSkipTimeMode() == false;
         }
 
         private static bool IsTooThirstyToSleep()
@@ -190,18 +211,16 @@ namespace Need_for_Sleep
                 float timeSlept = day - sleepStartTime;
                 sleepDebt -= timeSlept;
                 timeWokeUp = day - (sleepDebt + GetSleepDebtThreshold());
-                SaveTimeWokeUp(timeWokeUp);
                 //Main.logger.LogDebug($"UpdateSleepDebtWakeUp day {day} timeSlept {timeSlept} timeWokeUp {timeWokeUp} sleepDebt {sleepDebt}");
-                UpdateSleepDebt();
                 forcedWakeUp = false;
             }
             else
             {
                 timeWokeUp = (float)DayNightCycle.main.GetDay();
-                SaveTimeWokeUp(timeWokeUp);
                 //Main.logger.LogDebug($"UpdateSleepDebtWakeUp timeWokeUp {timeWokeUp} sleepDebt {sleepDebt}");
-                UpdateSleepDebt();
             }
+            SaveTimeWokeUp(timeWokeUp);
+            UpdateSleepDebt();
         }
 
         private static void UpdateSleepDebt()
@@ -210,8 +229,14 @@ namespace Need_for_Sleep
             float timeAwake = (float)DayNightCycle.main.GetDay() - timeWokeUp;
             sleepDebt = Mathf.Clamp01(timeAwake - GetSleepDebtThreshold());
             //Main.logger.LogDebug($"UpdateSleepDebt day {day} sleepDebt {sleepDebt}");
-            radialBlurControl.SetAmount(sleepDebt);
-            speedMod = 1f - sleepDebt * .5f;
+            ApplyPenulties();
+        }
+
+        private static void ApplyPenulties()
+        {
+            float sd = GetSleepDebt();
+            radialBlurControl.SetAmount(sd);
+            speedMod = 1f - sd * .5f;
         }
 
         private static void StartSleep()
@@ -270,18 +295,18 @@ namespace Need_for_Sleep
             {
                 float day = (float)DayNightCycle.main.GetDay();
                 float timeAwake = day - timeWokeUp;
-                AddDebug($"HandleSleepDebtAwake day {day} threshold {GetSleepDebtThreshold()}");
-                AddDebug("HandleSleepDebtAwake timeWokeUp " + timeWokeUp);
-                AddDebug("HandleSleepDebtAwake timeAwake " + timeAwake);
-                AddDebug("HandleSleepDebtAwake hoursTillTired " + GetHoursTillTired());
+                AddDebug($"day {day} threshold {GetSleepDebtThreshold()}");
+                AddDebug("timeWokeUp " + timeWokeUp);
+                AddDebug("timeAwake " + timeAwake);
+                AddDebug("CoffeeMod " + GetCoffeeMod());
                 if (sleepDebt > 0)
                 {
-                    AddDebug("HandleSleepDebtAwake sleepDebt " + sleepDebt);
+                    AddDebug("sleepDebt " + sleepDebt);
                     float sleepDebtHours = sleepDebt / 24;
-                    AddDebug("HandleSleepDebtAwake sleepDebtHours " + sleepDebtHours);
+                    AddDebug("sleepDebtHours " + sleepDebtHours);
                 }
                 if (speedMod < 1)
-                    AddDebug("HandleSleepDebtAwake speedMod " + speedMod);
+                    AddDebug("speedMod " + speedMod);
             }
         }
 
@@ -331,18 +356,22 @@ namespace Need_for_Sleep
             [HarmonyPostfix, HarmonyPatch("Update")]
             static void UpdatePostfix(Player __instance)
             {
-                //if (Input.GetKey(KeyCode.R))
-                //AddDebug($"CanSleep  {CanSleep()}");
+                if (setupDone == false)
+                    return;
 
-                if (IsLookingAtGround())
-                {
+                bool lookingAtGround = IsLookingAtGround();
+                if (lookingAtGround)
                     OnBedHandHover(myBed);
-                    if (GameInput.GetButtonDown(sleepButtons_[Config.sleepButton.Value]))
-                    {
-                        if (CanSleep())
-                            StartSleepMyBed();
-                    }
-                }
+
+                checkingSleepButton = true;
+                if (GameInput.GetButtonDown(sleepButtons_[Config.sleepButton.Value]) == false)
+                    return;
+
+                checkingSleepButton = false;
+                if (Config.showTimeTillTireSleepButton.Value && !lookingAtBed && !lookingAtGround)
+                    AddDebug(GetTiredText());
+                else if (lookingAtGround && CanSleep())
+                    StartSleepMyBed();
             }
 
             [HarmonyPostfix, HarmonyPatch("OnTakeDamage")]
@@ -358,7 +387,7 @@ namespace Need_for_Sleep
 
         private static int GetHoursTillTired()
         {
-            if (sleepDebt > 0)
+            if (GetSleepDebt() > 0)
                 return -1;
 
             float timeTired = timeWokeUp + GetSleepDebtThreshold();
@@ -366,9 +395,6 @@ namespace Need_for_Sleep
             DateTime dateTimeTired = DayNightCycle.ToGameDateTime(timeTired);
             DateTime dateTimeNow = DayNightCycle.ToGameDateTime(DayNightCycle.main.timePassedAsFloat);
             TimeSpan timeSpan = dateTimeTired - dateTimeNow;
-            //if (Input.GetKeyDown(KeyCode.R))
-            //    AddDebug($"GetHoursTillTired {timeSpan.TotalHours.ToString("0.0")} RoundToInt {Mathf.RoundToInt((float)timeSpan.TotalHours)}");
-
             int hours = Mathf.RoundToInt((float)timeSpan.TotalHours);
             if (hours < 0)
                 hours = 0;
@@ -376,7 +402,7 @@ namespace Need_for_Sleep
             return hours;
         }
 
-        static string GetTiredText()
+        static string GetTiredTextLookingAtBed()
         {
             if (Config.calorieBurnMultSleep.Value > 0)
             {
@@ -385,18 +411,26 @@ namespace Need_for_Sleep
                 else if (survival.food < SurvivalConstants.kCriticalFoodThreshold)
                     return Language.main.Get("NS_too_hungry_to_sleep");
             }
-            //if (sleepDebt == 0 && Config.sleepAnytime.Value == false)
-            //    return Language.main.Get("BedSleepTimeOut");
             if (sleepDebt > 0)
                 return Language.main.Get("NS_tired");
 
             if (Config.showTimeTillTired.Value == false && sleepDebt == 0)
                 return Language.main.Get("BedSleepTimeOut");
 
-            int hoursTillTired = GetHoursTillTired();
-            //if (Input.GetKeyDown(KeyCode.R))
-            //    AddDebug($"sleepDebt {sleepDebt} hoursTillTired {hoursTillTired} ");
+            return GetHoursTillTiredText();
+        }
 
+        static string GetTiredText()
+        {
+            if (sleepDebt > 0)
+                return Language.main.Get("NS_tired");
+
+            return GetHoursTillTiredText();
+        }
+
+        private static string GetHoursTillTiredText()
+        {
+            int hoursTillTired = GetHoursTillTired();
             if (hoursTillTired == 0 && sleepDebt == 0)
                 hoursTillTired = 1;
 
@@ -452,12 +486,17 @@ namespace Need_for_Sleep
             if (Player.main.guiHand.IsFreeToInteract() == false)
                 return;
 
-            HandReticle.main.SetText(HandReticle.TextType.HandSubscript, GetTiredText(), false);
+            HandReticle.main.SetText(HandReticle.TextType.HandSubscript, GetTiredTextLookingAtBed(), false);
             if (CanSleep())
             {
                 HandReticle.main.SetText(HandReticle.TextType.Hand, bed.handText, true, sleepButtons_[Config.sleepButton.Value]);
                 HandReticle.main.SetIcon(HandReticle.IconType.Hand);
             }
+        }
+
+        private static bool IsSleepButton(Button button)
+        {
+            return sleepButtons.ContainsKey(button) && sleepButtons[button] == Config.sleepButton.Value;
         }
 
         [HarmonyPatch(typeof(Bed))]
@@ -560,44 +599,117 @@ namespace Need_for_Sleep
             public static void Postfix(UnderwaterMotor __instance, float inMaxSpeed, ref float __result)
             {
                 //AddDebug("UnderwaterMotor AlterMaxSpeed");
-                if (seaglideEquipped == false && speedMod > 0 && speedMod < 1)
-                    __result *= speedMod;
-            }
-        }
-
-        [HarmonyPatch(typeof(GroundMotor), "ApplyInputVelocityChange")]
-        class GroundMotor_ApplyInputVelocityChange_Patch
-        {
-            public static void Prefix(GroundMotor __instance, ref Vector3 velocity, ref Vector3 __result)
-            {
-                if (Main.gameLoaded == false)
+                if (setupDone == false || seaglideEquipped || speedMod == 1)
                     return;
 
-                if (speedMod > 0 && speedMod < 1 && __instance.grounded)
+                float accel = 1;
+                if (__instance.movementInputDirection == default)
                 {
-                    //AddDebug("GroundMotor ApplyInputVelocityChange Prefix " + speedMod);
-                    __instance.sprintPressed = false;
-                    __instance.movementInputDirection = __instance.movementInputDirection.normalized * speedMod;
+                    if (timeSwimStart > 0)
+                    {
+                        //AddDebug("Swim Stop  ");
+                        timeSwimStart = 0;
+                    }
                 }
+                else
+                {
+                    if (timeSwimStart == 0)
+                    {
+                        //AddDebug("Swim Start  ");
+                        timeSwimStart = DayNightCycle.main.timePassedAsFloat;
+                    }
+                }
+                if (timeSwimStart > 0)
+                {
+                    float timeSwam = DayNightCycle.main.timePassedAsFloat - timeSwimStart;
+                    accel = Util.MapTo01range(timeSwam, 0, GetSleepDebt() * 2);
+                    //AddDebug($"accel  {accel.ToString("0.0")}");
+                }
+                __result *= speedMod * accel;
             }
         }
 
-        [HarmonyPatch(typeof(Survival))]
-        class Survival_Start_patch
+        [HarmonyPatch(typeof(GroundMotor))]
+        class GroundMotor_Patch
         {
-            [HarmonyPrefix, HarmonyPatch("UpdateStats")]
-            static bool UpdateStatsPrefix(Survival __instance, ref float timePassed, ref float __result)
-            {
-                if (Main.gameLoaded == false)
-                    return false;
+            static float timeSprintMin = 5;
+            static float timeSprintMax = 10;
+            static float timeStopSprint = 0;
 
-                if (sleeping && Config.calorieBurnMultSleep.Value > 0)
+            [HarmonyPostfix, HarmonyPatch("Awake")]
+            public static void AwakePostfix(GroundMotor __instance)
+            {
+                forwardSprintModifierDefault = __instance.forwardSprintModifier;
+            }
+            [HarmonyPrefix, HarmonyPatch("ApplyInputVelocityChange")]
+            public static void ApplyInputVelocityChangePrefix(GroundMotor __instance, ref Vector3 velocity, ref Vector3 __result)
+            {
+                if (setupDone == false || speedMod == 1 || !__instance.grounded || Time.timeScale == 0)
+                    return;
+
+                //AddDebug("GroundMotor ApplyInputVelocityChange Prefix " + speedMod);
+                if (__instance.movementInputDirection == default)
                 {
-                    //Main.logger.LogInfo("UpdateStats sleeping DayNightCycle.timePassed " + (int)DayNightCycle.main.timePassed + " timePassed " + (int)timePassed);
-                    timePassed *= Config.calorieBurnMultSleep.Value;
-                    //AddDebug($"UpdateStats sleeping timePassed {timePassed}");
+                    if (timeWalkStart > 0)
+                    {
+                        //AddDebug("Walk Stop  ");
+                        timeWalkStart = 0;
+                        timeSprintStart = 0;
+                    }
                 }
-                return true;
+                else
+                {
+                    if (timeWalkStart == 0)
+                    {
+                        //AddDebug("Walk Start  ");
+                        timeWalkStart = DayNightCycle.main.timePassedAsFloat;
+                    }
+                    if (__instance.sprintPressed && timeSprintStart == 0)
+                    {
+                        //AddDebug("Sprint Start  ");
+                        timeSprintStart = DayNightCycle.main.timePassedAsFloat;
+                        __instance.forwardSprintModifier = 1;
+                        if (timeStopSprint == 0)
+                        {
+                            timeStopSprint = DayNightCycle.main.timePassedAsFloat + UnityEngine.Random.Range(timeSprintMin, timeSprintMax);
+                        }
+                    }
+                }
+                float accel = 1;
+                float sprintAccel = 1;
+                if (timeWalkStart > 0)
+                {
+                    float timeWalked = DayNightCycle.main.timePassedAsFloat - timeWalkStart;
+                    accel = Util.MapTo01range(timeWalked, 0, GetSleepDebt());
+                }
+                if (timeSprintStart > 0)
+                {
+                    if (__instance.sprintPressed)
+                    {
+                        float timeWprinted = DayNightCycle.main.timePassedAsFloat - timeSprintStart;
+                        sprintAccel = Util.MapTo01range(timeWprinted, 0, forwardSprintModifierDefault + GetSleepDebt());
+                        //AddDebug($"sprintAccel {sprintAccel.ToString("0.0")} ");
+                        float forwardSprintModifier = forwardSprintModifierDefault * sprintAccel;
+                        if (forwardSprintModifier > 1)
+                        {
+                            //AddDebug($"forwardSprintModifier {forwardSprintModifier.ToString("0.0")} ");
+                            __instance.forwardSprintModifier = forwardSprintModifier;
+                        }
+                        //AddDebug($"forwardSprintModifier {__instance.forwardSprintModifier} ");
+                        //if (DayNightCycle.main.timePassedAsFloat > timeStopSprint)
+                        {
+                            //AddDebug("Force Sprint Stop  ");
+                            //sprintAccel = 1;
+                        }
+                    }
+                    else
+                    {
+                        //AddDebug("Sprint Stop  ");
+                        timeSprintStart = 0;
+                        __instance.forwardSprintModifier = forwardSprintModifierDefault;
+                    }
+                }
+                __instance.movementInputDirection = __instance.movementInputDirection.normalized * speedMod * accel;
             }
         }
 
@@ -638,10 +750,14 @@ namespace Need_for_Sleep
             [HarmonyPostfix, HarmonyPatch("GetLookDelta")]
             static void GetLookDeltaPostfix(GameInput __instance, ref Vector2 __result)
             {
-                if (__result == default || sleepDebt == 0 || Player.main.mode == Player.Mode.LockedPiloting)
+                if (setupDone == false || __result == default || Player.main.mode == Player.Mode.LockedPiloting)
                     return;
 
-                float mod = 1 - sleepDebt * .5f;
+                float sleepDebt_ = GetSleepDebt();
+                if (sleepDebt_ == 0)
+                    return;
+
+                float mod = 1 - sleepDebt_ * .5f;
                 __result *= mod;
                 //AddDebug($"GetLookDelta {__result}");
             }
@@ -662,15 +778,18 @@ namespace Need_for_Sleep
                 return true;
             }
 
+
             [HarmonyPostfix, HarmonyPatch("GetButtonDown")]
             static void ScanInputsPostfix(GameInput __instance, Button button, ref bool __result)
             {
-                if (Main.gameLoaded == false || Time.timeScale == 0)
+                if (setupDone == false || Time.timeScale == 0)
                     return;
 
                 if (__result)
                 {
-                    //AddDebug($"button {button} sleepButton {Config.sleepButton.Value} sleepButtons.ContainsKey(button) {sleepButtons.ContainsKey(button)} ");
+                    if (checkingSleepButton)
+                        return;
+                    //AddDebug($"GetButtonDown  {button}  ");
                     if (Main.tweaksFixesLoaded)
                     {
                         if (button == Button.AltTool)
@@ -680,8 +799,7 @@ namespace Need_for_Sleep
                                 return;
                         }
                     }
-                    if (IsSleepButton(button) && IsLookingAtGround())
-                        return;
+
 
                     if (seaglideEquipped)
                     {
@@ -723,20 +841,19 @@ namespace Need_for_Sleep
                     }
                     return;
                 }
-                if (__result && delayedButton == Button.None && sleepDebt > 0 && delayableButtons.Contains(button))
+                if (__result && delayedButton == Button.None && delayableButtons.Contains(button))
                 {
-                    float delayTime = sleepDebt - UnityEngine.Random.value;
+                    float sleepDebt_ = GetSleepDebt();
+                    if (sleepDebt_ == 0)
+                        return;
+
+                    float delayTime = sleepDebt_ - UnityEngine.Random.value;
                     if (delayTime > 0)
                     {
                         __result = false;
                         Player.main.StartCoroutine(DelayInput(button, delayTime));
                     }
                 }
-            }
-
-            private static bool IsSleepButton(Button button)
-            {
-                return sleepButtons.ContainsKey(button) && sleepButtons[button] == Config.sleepButton.Value;
             }
 
             private static IEnumerator DelayInput(Button button, float delayTime)
@@ -759,7 +876,7 @@ namespace Need_for_Sleep
             [HarmonyPostfix, HarmonyPatch("GetButtonHeld")]
             static void GetButtonHeldPostfix(GameInput __instance, Button button, ref bool __result)
             {
-                if (IsSleepButton(button) && IsLookingAtGround())
+                if (setupDone == false || Time.timeScale == 0)
                     return;
 
                 if (builderEquipped)
@@ -787,9 +904,13 @@ namespace Need_for_Sleep
                     }
                     return;
                 }
-                if (__result && delayedButton == Button.None && sleepDebt > 0 && delayableButtons.Contains(button))
+                if (__result && delayedButton == Button.None && delayableButtons.Contains(button))
                 {
-                    float delayTime = sleepDebt - UnityEngine.Random.value;
+                    float sleepDebt_ = GetSleepDebt();
+                    if (sleepDebt_ == 0)
+                        return;
+
+                    float delayTime = sleepDebt_ - UnityEngine.Random.value;
                     if (delayTime > 0)
                     {
                         //AddDebug($"GetButtonHeld DelayInput {button}");
@@ -797,6 +918,19 @@ namespace Need_for_Sleep
                         Player.main.StartCoroutine(DelayHeldInput(button, delayTime));
                     }
                 }
+            }
+
+            private static bool SleepButtonCheck(Button button)
+            {
+                if (Config.showTimeTillTireSleepButton.Value && IsSleepButton(button))
+                {
+                    bool lookingAtGround = IsLookingAtGround();
+                    if (lookingAtGround)
+                        return true;
+                    else if (lookingAtGround == false && lookingAtBed == false)
+                        return true;
+                }
+                return false;
             }
         }
 
@@ -840,6 +974,57 @@ namespace Need_for_Sleep
             }
         }
 
+        [HarmonyPatch(typeof(Survival))]
+        class Survival_patch
+        {
+            [HarmonyPrefix, HarmonyPatch("UpdateStats")]
+            static bool UpdateStatsPrefix(Survival __instance, ref float timePassed, ref float __result)
+            {
+                if (setupDone == false)
+                    return false;
+
+                if (sleeping && Config.calorieBurnMultSleep.Value > 0)
+                {
+                    //Main.logger.LogInfo("UpdateStats sleeping DayNightCycle.timePassed " + (int)DayNightCycle.main.timePassed + " timePassed " + (int)timePassed);
+                    timePassed *= Config.calorieBurnMultSleep.Value;
+                    //AddDebug($"UpdateStats sleeping timePassed {timePassed}");
+                }
+                return true;
+            }
+            [HarmonyPostfix, HarmonyPatch("Eat")]
+            public static void EatPostfix(Survival __instance, GameObject useObj, ref bool __result)
+            {
+                if (__result == false)
+                    return;
+
+                TechType tt = CraftData.GetTechType(useObj);
+                if (tt == TechType.Coffee)
+                {
+                    SaveCoffeeTime(DayNightCycle.main.timePassedAsFloat);
+                    ApplyPenulties();
+                }
+            }
+        }
+
+        public static bool IsHighOnCoffee()
+        {
+            return GetCoffeeMod() < 1;
+        }
+
+        public static void SaveCoffeeTime(float time)
+        {
+            survival.stomach = time;
+        }
+
+        public static float GetCoffeeMod()
+        {
+            float coffeeTime = survival.stomach;
+            if (coffeeTime == 0)
+                return 1;
+
+            float mod = DayNightCycle.main.timePassedAsFloat - coffeeTime;
+            return Util.MapTo01range(mod, 0, oneHourDuration);
+        }
 
 
     }

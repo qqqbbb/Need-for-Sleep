@@ -2,7 +2,6 @@
 using BepInEx.Bootstrap;
 using BepInEx.Configuration;
 using BepInEx.Logging;
-using FMOD;
 using HarmonyLib;
 using Nautilus.Handlers;
 using Nautilus.Options;
@@ -11,9 +10,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
-using UnityEngine.Events;
-using UnityEngine.SceneManagement;
-using UWE;
 
 
 namespace Need_for_Sleep
@@ -24,12 +20,11 @@ namespace Need_for_Sleep
     {
         public const string PLUGIN_GUID = "qqqbbb.subnautica.NeedForSleep";
         public const string PLUGIN_NAME = "Need for Sleep";
-        public const string PLUGIN_VERSION = "1.3.0";
+        public const string PLUGIN_VERSION = "1.4.0";
         public static ManualLogSource logger { get; private set; }
         static string configPath = Paths.ConfigPath + Path.DirectorySeparatorChar + PLUGIN_NAME + Path.DirectorySeparatorChar + "Config.cfg";
         public static ConfigFile config;
         internal static OptionsMenu options;
-        public static bool gameLoaded;
         public static bool enhancedSleepLoaded;
         public static bool tweaksFixesLoaded;
 
@@ -51,12 +46,10 @@ namespace Need_for_Sleep
             OptionsPanelHandler.RegisterModOptions(options);
             GetLoadedMods();
             Logger.LogInfo($"Plugin {PLUGIN_GUID} {PLUGIN_VERSION} is loaded ");
-            //SceneManager.sceneLoaded += new UnityAction<Scene, LoadSceneMode>(OnSceneLoaded);
         }
 
         private void LoadedGameSetup()
         {
-            gameLoaded = true;
             Patches.Setup();
         }
 
@@ -64,7 +57,6 @@ namespace Need_for_Sleep
         {
             //Logger.LogDebug("Need for Sleep OnQuit");
             Patches.ResetVars();
-            gameLoaded = false;
         }
 
         public static void GetLoadedMods()

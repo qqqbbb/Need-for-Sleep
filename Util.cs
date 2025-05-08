@@ -10,10 +10,6 @@ namespace Need_for_Sleep
 {
     internal class Util
     {
-        public static bool IsGameLoadedAndRunning()
-        {
-            return Main.gameLoaded && Time.timeScale > 0;
-        }
 
         public static float MapTo01range(int value, int min, int max)
         {
@@ -25,9 +21,21 @@ namespace Need_for_Sleep
             else
                 fl = ((float)value - (float)min) / (float)oldRange;
 
-            return fl;
+            return Mathf.Clamp01(fl);
         }
 
+        public static float MapTo01range(float value, float min, float max)
+        {
+            float fl;
+            float oldRange = max - min;
+
+            if (oldRange == 0)
+                fl = 0f;
+            else
+                fl = (value - min) / oldRange;
+
+            return Mathf.Clamp01(fl);
+        }
 
         public static IEnumerator Spawn(TechType techType, IOut<GameObject> result, Vector3 pos = default, Vector3 rot = default)
         {
@@ -58,7 +66,20 @@ namespace Need_for_Sleep
             }
         }
 
+        public static float MapToRange(float value, float oldMin, float oldMax, float newMin, float newMax)
+        {
+            float oldRange = oldMax - oldMin;
+            float newValue;
 
+            if (oldRange == 0)
+                newValue = newMin;
+            else
+            {
+                float newRange = newMax - newMin;
+                newValue = ((value - oldMin) * newRange) / oldRange + newMin;
+            }
+            return newValue;
+        }
 
 
     }
