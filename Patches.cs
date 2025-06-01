@@ -3,11 +3,8 @@ using Nautilus.Utility;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Text;
 using UnityEngine;
-using UnityStandardAssets.ImageEffects;
 using UWE;
 using static Bed;
 using static ErrorMessage;
@@ -84,7 +81,7 @@ namespace Need_for_Sleep
 
         public static float GetSleepDebt()
         {
-            if (GameModeUtils.IsInvisible())
+            if (setupDone == false || GameModeUtils.IsInvisible())
                 return 0;
 
             return sleepDebt * GetCoffeeMod();
@@ -144,7 +141,7 @@ namespace Need_for_Sleep
         private static bool IsStandingStill()
         {
             Player player = Player.main;
-            return setupDone && Time.timeScale > 0 && player.mode == Player.Mode.Normal && player.IsUnderwaterForSwimming() == false && player.cinematicModeActive == false && player.pda.isInUse == false && player.groundMotor.grounded && player.playerController.velocity == default && DayNightCycle.main.IsInSkipTimeMode() == false;
+            return setupDone && Time.timeScale > 0 && player.GetMode() == Player.Mode.Normal && player.IsUnderwaterForSwimming() == false && player.cinematicModeActive == false && player.pda.isInUse == false && player.groundMotor.grounded && player.playerController.velocity == default && DayNightCycle.main.IsInSkipTimeMode() == false;
         }
 
         private static bool IsTooThirstyToSleep()
@@ -254,7 +251,7 @@ namespace Need_for_Sleep
         private static void StartSleepMyBed()
         {
             //AddDebug($"StartSleepMyBed sleepDebt {sleepDebt}");
-            CheckSpace();
+            CheckBedSpace();
             playerPosBeforeSleep = Player.main.transform.position;
             if (Player.main.currentSub == null)
                 myBed.transform.SetParent(null);
@@ -443,7 +440,7 @@ namespace Need_for_Sleep
             return Language.main.Get("NS_hours_till_tired") + hours;
         }
 
-        static void CheckSpace()
+        static void CheckBedSpace()
         {
             Transform playerT = Player.main.transform;
             Vector3 pos = new Vector3(playerT.position.x, playerT.position.y - 1, playerT.position.z);
@@ -799,8 +796,6 @@ namespace Need_for_Sleep
                                 return;
                         }
                     }
-
-
                     if (seaglideEquipped)
                     {
                         if (button == Button.RightHand || button == Button.AltTool)
