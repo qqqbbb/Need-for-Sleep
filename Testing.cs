@@ -13,22 +13,6 @@ namespace Need_for_Sleep
 {
     internal class Testing
     {
-        [HarmonyPatch(typeof(Player))]
-        class Player_Patch
-        {
-            private const float breathPeriodMax = 3f;
-
-            [HarmonyPostfix, HarmonyPatch("GetOxygenPerBreath")]
-            static void GetOxygenPerBreathPostfix(Player __instance, ref float __result, float breathingInterval, int depthClass)
-            {
-                __result = 0f;
-                if (GameModeUtils.RequiresOxygen())
-                    __result = 1;
-                //AddDebug("GetOxygenPerBreath breathingInterval " + breathingInterval);
-                //AddDebug("GetOxygenPerBreath  " + __result);
-                //return false;
-            }
-        }
         //[HarmonyPatch(typeof(Player), "Update")]
         class Player_Update_Patch
         {
