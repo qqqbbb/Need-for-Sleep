@@ -29,10 +29,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Localization\" />
-  </ItemGroup>
-
-  <ItemGroup>
     <Reference Include="PlatformInputDefault">
       <HintPath>C:\GAMES\Subnautica\Subnautica_Data\Managed\PlatformInputDefault.dll</HintPath>
     </Reference>

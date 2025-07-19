@@ -16,6 +16,11 @@ namespace Need_for_Sleep
         public static ConfigEntry<bool> showTimeTillTired;
         public static ConfigEntry<bool> showTimeTillTireSleepButton;
         public static ConfigEntry<SleepButton> sleepButton;
+        public static ConfigEntry<bool> delayButtons;
+        public static ConfigEntry<bool> turnSensivity;
+        public static ConfigEntry<bool> blurryVision;
+        public static ConfigEntry<bool> slowMovement;
+
 
         public enum SleepButton { Left_hand, Right_hand, Jump, Deconstruct, Tool_alt_use, Reload, Sprint };
 
@@ -27,6 +32,11 @@ namespace Need_for_Sleep
             showTimeTillTired = Main.config.Bind("", "Show time you will get tired when looking at bed", true, "");
             showTimeTillTireSleepButton = Main.config.Bind("", "Show time you will get tired when pressing sleep button", false, "");
             sleepButton = Main.config.Bind("", "Sleep button", SleepButton.Left_hand, "");
+            delayButtons = Main.config.Bind("", "Actions are less responsive when sleep deprived", true, "");
+            turnSensivity = Main.config.Bind("", "Turning around is less responsive when sleep deprived", true, "");
+            blurryVision = Main.config.Bind("", "Blurry vision when sleep deprived", true, "");
+            slowMovement = Main.config.Bind("", "Slower movement when sleep deprived", true, "");
+
         }
 
 
