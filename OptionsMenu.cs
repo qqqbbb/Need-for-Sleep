@@ -20,7 +20,7 @@ namespace Need_for_Sleep
             AddItem(Config.showTimeTillTired.ToModToggleOption());
             AddItem(Config.showTimeTillTireSleepButton.ToModToggleOption());
             AddItem(Config.sleepButton.ToModChoiceOption());
-            AddItem(Config.delayButtons.ToModToggleOption());
+            //AddItem(Config.delayButtons.ToModToggleOption()); broken after 82304 update
             AddItem(Config.turnSensivity.ToModToggleOption());
             AddItem(Config.blurryVision.ToModToggleOption());
             AddItem(Config.slowMovement.ToModToggleOption());

@@ -767,7 +767,7 @@ namespace Need_for_Sleep
                 //AddDebug($"GetLookDelta {__result}");
             }
             //[HarmonyPostfix, HarmonyPatch("GetMoveDirection")]
-            static void GetMoveDirectionPostfix(GameInput __instance, ref Vector3 __result)
+            static void GetMoveDirectionPostfix(ref Vector3 __result)
             {
                 if (__result == default || sleepDebt == 0 || Player.main.mode != Player.Mode.Normal)
                     return;
@@ -775,7 +775,7 @@ namespace Need_for_Sleep
                 //AddDebug($"GetMoveDirection {__result}");
             }
             //[HarmonyPrefix, HarmonyPatch("SetAutoMove")]
-            static bool SetAutoMovePrefix(GameInput __instance, bool _autoMove)
+            static bool SetAutoMovePrefix(bool _autoMove)
             {
                 if (_autoMove && sleepDebt > 0)
                     return false;
@@ -784,15 +784,15 @@ namespace Need_for_Sleep
             }
 
 
-            [HarmonyPostfix, HarmonyPatch("GetButtonDown")]
-            static void ScanInputsPostfix(Button button, ref bool __result)
+            //[HarmonyPostfix, HarmonyPatch("GetButtonDown")]
+            static void ScanInputsPostfix(Button action, ref bool __result)
             {
                 if (setupDone == false || Time.timeScale == 0 || Config.delayButtons.Value == false)
                     return;
 
                 if (__result)
                 {
-                    if (IsSleepButton(button) && IsLookingAtGround())
+                    if (IsSleepButton(action) && IsLookingAtGround())
                     {
                         //AddDebug($"GetButtonDown  {button} sleepButton return");
                         return;
@@ -800,7 +800,7 @@ namespace Need_for_Sleep
                     //AddDebug($"GetButtonDown  {button}  ");
                     if (Main.tweaksFixesLoaded)
                     {
-                        if (button == Button.AltTool)
+                        if (action == Button.AltTool)
                         {
                             PlayerTool tool = Inventory.main.GetHeldTool();
                             if (tool is Flare)
@@ -809,33 +809,33 @@ namespace Need_for_Sleep
                     }
                     if (seaglideEquipped)
                     {
-                        if (button == Button.RightHand || button == Button.AltTool)
+                        if (action == Button.RightHand || action == Button.AltTool)
                             return;
                     }
                     else if (builderEquipped)
                     {
-                        if (button == Button.RightHand || button == Button.LeftHand)
+                        if (action == Button.RightHand || action == Button.LeftHand)
                             return;
                     }
                     if (Player.main.currentMountedVehicle)
                     {
                         if (Player.main.currentMountedVehicle is SeaMoth)
                         {
-                            if (button == Button.RightHand)
+                            if (action == Button.RightHand)
                                 return;
                         }
                         else if (Player.main.currentMountedVehicle is Exosuit)
                         {
                             Exosuit exosuit = Player.main.currentMountedVehicle as Exosuit;
                             //AddDebug($"LeftArmType {exosuit.currentLeftArmType} RightArmType {exosuit.currentRightArmType}");
-                            if (exosuit.currentLeftArmType != TechType.ExosuitClawArmModule && button == Button.LeftHand)
+                            if (exosuit.currentLeftArmType != TechType.ExosuitClawArmModule && action == Button.LeftHand)
                                 return;
-                            else if (exosuit.currentRightArmType != TechType.ExosuitClawArmModule && button == Button.RightHand)
+                            else if (exosuit.currentRightArmType != TechType.ExosuitClawArmModule && action == Button.RightHand)
                                 return;
                         }
                     }
                 }
-                if (button == delayedButton)
+                if (action == delayedButton)
                 {
                     __result = false;
                     if (pressDelayedButton)
@@ -847,7 +847,7 @@ namespace Need_for_Sleep
                     }
                     return;
                 }
-                if (__result && delayedButton == Button.None && delayableButtons.Contains(button))
+                if (__result && delayedButton == Button.None && delayableButtons.Contains(action))
                 {
                     float sleepDebt_ = GetSleepDebt();
                     if (sleepDebt_ == 0)
@@ -857,7 +857,7 @@ namespace Need_for_Sleep
                     if (delayTime > 0)
                     {
                         __result = false;
-                        Player.main.StartCoroutine(DelayInput(button, delayTime));
+                        Player.main.StartCoroutine(DelayInput(action, delayTime));
                     }
                 }
             }
@@ -879,25 +879,25 @@ namespace Need_for_Sleep
                 pressDelayedHeldButton = true;
             }
 
-            [HarmonyPostfix, HarmonyPatch("GetButtonHeld")]
-            static void GetButtonHeldPostfix(Button button, ref bool __result)
+            //[HarmonyPostfix, HarmonyPatch("GetButtonHeld")]
+            static void GetButtonHeldPostfix(Button action, ref bool __result)
             {
                 if (setupDone == false || Time.timeScale == 0 || Config.delayButtons.Value == false)
                     return;
 
                 if (builderEquipped)
                 {
-                    if (button == Button.LeftHand || button == Button.RightHand)
+                    if (action == Button.LeftHand || action == Button.RightHand)
                         return;
                 }
-                if (button == heldButtonWasDelayed)
+                if (action == heldButtonWasDelayed)
                 {
                     if (__result == false)
                         heldButtonWasDelayed = Button.None;
                     else
                         return;
                 }
-                if (button == delayedButton)
+                if (action == delayedButton)
                 {
                     __result = false;
                     if (pressDelayedHeldButton)
@@ -910,7 +910,7 @@ namespace Need_for_Sleep
                     }
                     return;
                 }
-                if (__result && delayedButton == Button.None && delayableButtons.Contains(button))
+                if (__result && delayedButton == Button.None && delayableButtons.Contains(action))
                 {
                     float sleepDebt_ = GetSleepDebt();
                     if (sleepDebt_ == 0)
@@ -921,7 +921,7 @@ namespace Need_for_Sleep
                     {
                         //AddDebug($"GetButtonHeld DelayInput {button}");
                         __result = false;
-                        Player.main.StartCoroutine(DelayHeldInput(button, delayTime));
+                        Player.main.StartCoroutine(DelayHeldInput(action, delayTime));
                     }
                 }
             }

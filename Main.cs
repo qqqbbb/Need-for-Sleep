@@ -20,7 +20,7 @@ namespace Need_for_Sleep
     {
         public const string PLUGIN_GUID = "qqqbbb.subnautica.NeedForSleep";
         public const string PLUGIN_NAME = "Need for Sleep";
-        public const string PLUGIN_VERSION = "1.5.1";
+        public const string PLUGIN_VERSION = "2.0.0";
         public static ManualLogSource logger { get; private set; }
         static string configPath = Paths.ConfigPath + Path.DirectorySeparatorChar + PLUGIN_NAME + Path.DirectorySeparatorChar + "Config.cfg";
         public static ConfigFile config;
@@ -38,7 +38,7 @@ namespace Need_for_Sleep
             logger = base.Logger;
             Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly(), $"{PLUGIN_GUID}");
             SaveUtils.RegisterOnQuitEvent(OnQuit);
-            WaitScreenHandler.RegisterLateLoadTask("Need for Sleep", task => LoadedGameSetup());
+            WaitScreenHandler.RegisterLateLoadTask(PLUGIN_NAME, task => LoadedGameSetup());
             LanguageHandler.RegisterLocalizationFolder();
             config = new ConfigFile(configPath, false);
             Need_for_Sleep.Config.Bind();

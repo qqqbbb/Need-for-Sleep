@@ -19,7 +19,7 @@
     <PackageReference Include="BepInEx.Core" Version="5.4.21" />
     <PackageReference Include="BepInEx.PluginInfoProps" Version="1.1.0" />
     <PackageReference Include="UnityEngine.Modules" Version="2019.4.36" IncludeAssets="compile" />
-    <PackageReference Include="Subnautica.GameLibs" Version="71288.0.0-r.0" />
+    <PackageReference Include="Subnautica.GameLibs" Version="82304.0.0-r.0" />
     <PackageReference Include="PolySharp" Version="1.13.1" />
     <PackageReference Include="Subnautica.Nautilus" Version="1.*-*" PrivateAssets="all" />
   </ItemGroup>
@@ -35,6 +35,6 @@
   </ItemGroup>
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <Exec Command="mkdir &quot;D:\SteamLibrary\steamapps\common\Subnautica\BepInEx\plugins\NeedForSleep&quot;&#xD;&#xA;copy /Y &quot;$(TargetPath)&quot; &quot;D:\SteamLibrary\steamapps\common\Subnautica\BepInEx\plugins\NeedForSleep\$(TargetFileName)&quot;&#xD;&#xA;&#xD;&#xA;mkdir &quot;D:\SteamLibrary\steamapps\common\Subnautica\BepInEx\plugins\NeedForSleep\Localization&quot;&#xD;&#xA;copy /Y &quot;$(ProjectDir)\Localization\*.*&quot; &quot;D:\SteamLibrary\steamapps\common\Subnautica\BepInEx\plugins\NeedForSleep\Localization&quot;&#xD;&#xA; &#xD;&#xA;&#xD;&#xA;mkdir &quot;C:\GAMES\Subnautica\BepInEx\plugins\NeedForSleep&quot;&#xD;&#xA;copy /Y &quot;$(TargetPath)&quot; &quot;C:\GAMES\Subnautica\BepInEx\plugins\NeedForSleep\$(TargetFileName)&quot;&#xD;&#xA;&#xD;&#xA;mkdir &quot;C:\GAMES\Subnautica\BepInEx\plugins\NeedForSleep\Localization&quot;&#xD;&#xA;copy /Y &quot;$(ProjectDir)\Localization\*.*&quot; &quot;C:\GAMES\Subnautica\BepInEx\plugins\NeedForSleep\Localization&quot;&#xD;&#xA; " />
+    <Exec Command="mkdir &quot;D:\SteamLibrary\steamapps\common\Subnautica\BepInEx\plugins\NeedForSleep&quot;&#xD;&#xA;copy /Y &quot;$(TargetPath)&quot; &quot;D:\SteamLibrary\steamapps\common\Subnautica\BepInEx\plugins\NeedForSleep\$(TargetFileName)&quot;&#xD;&#xA;&#xD;&#xA;mkdir &quot;D:\SteamLibrary\steamapps\common\Subnautica\BepInEx\plugins\NeedForSleep\Localization&quot;&#xD;&#xA;copy /Y &quot;$(ProjectDir)\Localization\*.*&quot; &quot;D:\SteamLibrary\steamapps\common\Subnautica\BepInEx\plugins\NeedForSleep\Localization&quot;&#xD;&#xA; &#xD;&#xA;&#xD;&#xA;mkdir &quot;C:\GAMES\Subnautica\BepInEx\plugins\NeedForSleep&quot;&#xD;&#xA;copy /Y &quot;$(TargetPath)&quot; &quot;C:\GAMES\Subnautica\BepInEx\plugins\NeedForSleep\$(TargetFileName)&quot;&#xD;&#xA;&#xD;&#xA;mkdir &quot;C:\GAMES\Subnautica\BepInEx\plugins\NeedForSleep\Localization&quot;&#xD;&#xA;copy /Y &quot;$(ProjectDir)\Localization\*.*&quot; &quot;C:\GAMES\Subnautica\BepInEx\plugins\NeedForSleep\Localization&quot;&#xD;&#xA; &#xD;&#xA;" />
   </Target>
 </Project>
