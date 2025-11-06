@@ -26,6 +26,7 @@ namespace Need_for_Sleep
 
                 if (Input.GetKeyDown(KeyCode.C))
                 {
+
                     //uGUI_PlayerSleep.main.fadeInSpeed *= .5f;
                     //uGUI_PlayerSleep.main.StartSleepScreen();
                     //AddDebug("timePassed " + DayNightCycle.main.timePassedAsFloat);

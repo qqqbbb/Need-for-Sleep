@@ -29,6 +29,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Reference Include="Nautilus">
+      <HintPath>C:\GAMES\Subnautica\BepInEx\plugins\Nautilus\Nautilus.dll</HintPath>
+    </Reference>
     <Reference Include="PlatformInputDefault">
       <HintPath>C:\GAMES\Subnautica\Subnautica_Data\Managed\PlatformInputDefault.dll</HintPath>
     </Reference>

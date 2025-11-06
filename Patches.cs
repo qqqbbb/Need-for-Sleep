@@ -22,14 +22,11 @@ namespace Need_for_Sleep
         static Survival survival;
         static float sleepDebt;
         static float hungerUpdateTime;
-        static bool frame;
         static Bed myBed;
         static Vector3 myBedLocalPos = new Vector3(0, -2, 0);
         static int layerCheckMask = ~(1 << LayerMask.NameToLayer("Player") | 1 << LayerMask.NameToLayer("Trigger"));
         static float sleepDurationMult = 1;
         static HashSet<Button> delayableButtons = new HashSet<Button> { Button.MoveForward, Button.MoveBackward, Button.MoveLeft, Button.MoveRight, Button.MoveDown, Button.MoveUp, Button.Jump, Button.PDA, Button.Deconstruct, Button.LeftHand, Button.RightHand, Button.CycleNext, Button.CyclePrev, Button.Slot1, Button.Slot2, Button.Slot3, Button.Slot4, Button.Slot5, Button.AltTool, Button.Reload, Button.Sprint, Button.AutoMove, Button.LookDown, Button.LookUp, Button.LookRight, Button.LookLeft };
-        static Dictionary<Button, Config.SleepButton> sleepButtons = new Dictionary<Button, Config.SleepButton> { { Button.LeftHand, Config.SleepButton.Left_hand }, { Button.RightHand, Config.SleepButton.Right_hand }, { Button.Jump, Config.SleepButton.Jump }, { Button.Deconstruct, Config.SleepButton.Deconstruct }, { Button.AltTool, Config.SleepButton.Tool_alt_use }, { Button.Reload, Config.SleepButton.Reload }, { Button.Sprint, Config.SleepButton.Sprint } };
-        static Dictionary<Config.SleepButton, Button> sleepButtons_ = new Dictionary<Config.SleepButton, Button> { { Config.SleepButton.Left_hand, Button.LeftHand }, { Config.SleepButton.Right_hand, Button.RightHand }, { Config.SleepButton.Jump, Button.Jump }, { Config.SleepButton.Deconstruct, Button.Deconstruct }, { Config.SleepButton.Tool_alt_use, Button.AltTool }, { Config.SleepButton.Reload, Button.Reload }, { Config.SleepButton.Sprint, Button.Sprint } };
         private static bool seaglideEquipped;
         private static RadialBlurScreenFXController radialBlurControl;
         private static bool lookingAtBed;
@@ -89,10 +86,8 @@ namespace Need_for_Sleep
         private static bool IsLookingAtGround()
         {
             if (lookingAtBed)
-            {
-                lookingAtBed = false;
                 return false;
-            }
+
             if (IsStandingStill() == false)
                 return false;
 
@@ -121,6 +116,9 @@ namespace Need_for_Sleep
         private static bool CanSleep()
         {
             if (IsStandingStill() == false)
+                return false;
+
+            if (GameModeUtils.RequiresOxygen() && Player.main.CanBreathe() == false)
                 return false;
 
             if (Config.calorieBurnMultSleep.Value > 0)
@@ -317,9 +315,6 @@ namespace Need_for_Sleep
         {
             while (sleeping)
             {
-                frame = !frame;
-                if (frame == false)
-                    yield return null;
                 //AddDebug("HandleSleepDebtSleep FrozenStats " + Player.main.IsFrozenStats());
                 if (DayNightCycle.main.timePassedAsFloat > hungerUpdateTime)
                 {
@@ -331,6 +326,7 @@ namespace Need_for_Sleep
                     ForceWakeUp();
                     yield break;
                 }
+                yield return null;
             }
         }
 
@@ -359,24 +355,26 @@ namespace Need_for_Sleep
             [HarmonyPostfix, HarmonyPatch("Update")]
             static void UpdatePostfix(Player __instance)
             {
-                if (setupDone == false)
+                if (setupDone == false || sleeping)
                     return;
 
-                //if (GameInput.GetButtonDown(Button.Reload))
-                //{
-                //    AddDebug($"reload Button !!! ");
-                //}
+                if (lookingAtBed)
+                {
+                    if (GameInput.GetLookDelta() != default || GameInput.GetMoveDirection() != default)
+                        lookingAtBed = false;
+                }
                 bool lookingAtGround = IsLookingAtGround();
                 if (lookingAtGround)
                     OnBedHandHover(myBed);
 
-                if (GameInput.GetButtonDown(sleepButtons_[Config.sleepButton.Value]) == false)
+                if (GameInput.GetButtonDown(OptionsMenu.sleepButton) == false)
                     return;
 
-                if (Config.showTimeTillTireSleepButton.Value && !lookingAtBed && !lookingAtGround)
-                    AddDebug(GetTiredText());
-                else if (lookingAtGround && CanSleep())
+                //AddDebug($"lookingAtGround {lookingAtGround} lookingAtBed {lookingAtBed}");
+                if (lookingAtGround && CanSleep())
                     StartSleepMyBed();
+                else if (Config.showTimeTillTireSleepButton.Value && lookingAtBed == false && lookingAtGround == false)
+                    AddDebug(GetTiredText());
             }
 
             [HarmonyPostfix, HarmonyPatch("OnTakeDamage")]
@@ -494,15 +492,15 @@ namespace Need_for_Sleep
             HandReticle.main.SetText(HandReticle.TextType.HandSubscript, GetTiredTextLookingAtBed(), false);
             if (CanSleep())
             {
-                HandReticle.main.SetText(HandReticle.TextType.Hand, bed.handText, true, sleepButtons_[Config.sleepButton.Value]);
+                HandReticle.main.SetText(HandReticle.TextType.Hand, bed.handText, true, OptionsMenu.sleepButton);
                 HandReticle.main.SetIcon(HandReticle.IconType.Hand);
             }
         }
 
-        private static bool IsSleepButton(Button button)
-        {
-            return sleepButtons.ContainsKey(button) && sleepButtons[button] == Config.sleepButton.Value;
-        }
+        //private static bool IsSleepButton(Button button)
+        //{
+        //    return sleepButtons.ContainsKey(button) && sleepButtons[button] == Config.sleepButton.Value;
+        //}
 
         [HarmonyPatch(typeof(Bed))]
         private class Bed_Patch
@@ -522,9 +520,10 @@ namespace Need_for_Sleep
             [HarmonyPostfix, HarmonyPatch("OnHandHover")]
             public static void OnHandHoverPostfix(Bed __instance, GUIHand hand)
             {
+                //AddDebug("Bed OnHandHover");
                 lookingAtBed = true;
                 OnBedHandHover(__instance);
-                if (GameInput.GetButtonDown(sleepButtons_[Config.sleepButton.Value]))
+                if (GameInput.GetButtonDown(OptionsMenu.sleepButton))
                 {
                     if (CanSleep())
                     {
@@ -792,10 +791,10 @@ namespace Need_for_Sleep
 
                 if (__result)
                 {
-                    if (IsSleepButton(action) && IsLookingAtGround())
+                    //if (IsSleepButton(action) && IsLookingAtGround())
                     {
                         //AddDebug($"GetButtonDown  {button} sleepButton return");
-                        return;
+                        //return;
                     }
                     //AddDebug($"GetButtonDown  {button}  ");
                     if (Main.tweaksFixesLoaded)
@@ -926,18 +925,18 @@ namespace Need_for_Sleep
                 }
             }
 
-            private static bool SleepButtonCheck(Button button)
-            {
-                if (Config.showTimeTillTireSleepButton.Value && IsSleepButton(button))
-                {
-                    bool lookingAtGround = IsLookingAtGround();
-                    if (lookingAtGround)
-                        return true;
-                    else if (lookingAtGround == false && lookingAtBed == false)
-                        return true;
-                }
-                return false;
-            }
+            //private static bool SleepButtonCheck(Button button)
+            //{
+            //    if (Config.showTimeTillTireSleepButton.Value && IsSleepButton(button))
+            //    {
+            //        bool lookingAtGround = IsLookingAtGround();
+            //        if (lookingAtGround)
+            //            return true;
+            //        else if (lookingAtGround == false && lookingAtBed == false)
+            //            return true;
+            //    }
+            //    return false;
+            //}
         }
 
         static void AttackPlayerSleep(CrawlerAttackLastTarget crawlerAttackLastTarget)

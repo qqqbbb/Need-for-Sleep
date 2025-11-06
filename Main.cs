@@ -11,7 +11,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 
-
 namespace Need_for_Sleep
 {
     [BepInPlugin(PLUGIN_GUID, PLUGIN_NAME, PLUGIN_VERSION)]
@@ -20,13 +19,14 @@ namespace Need_for_Sleep
     {
         public const string PLUGIN_GUID = "qqqbbb.subnautica.NeedForSleep";
         public const string PLUGIN_NAME = "Need for Sleep";
-        public const string PLUGIN_VERSION = "2.0.0";
+        public const string PLUGIN_VERSION = "2.1.0";
         public static ManualLogSource logger { get; private set; }
         static string configPath = Paths.ConfigPath + Path.DirectorySeparatorChar + PLUGIN_NAME + Path.DirectorySeparatorChar + "Config.cfg";
         public static ConfigFile config;
         internal static OptionsMenu options;
         public static bool enhancedSleepLoaded;
         public static bool tweaksFixesLoaded;
+
 
         private void Start()
         {
