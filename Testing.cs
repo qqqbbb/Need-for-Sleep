@@ -26,6 +26,12 @@ namespace Need_for_Sleep
 
                 if (Input.GetKeyDown(KeyCode.C))
                 {
+                    if (Player.main.currentEscapePod == null)
+                    {
+                        AddDebug("EscapePod == null)");
+                    }
+                    else
+                        AddDebug("EscapePod " + Player.main.currentEscapePod.name);
 
                     //uGUI_PlayerSleep.main.fadeInSpeed *= .5f;
                     //uGUI_PlayerSleep.main.StartSleepScreen();

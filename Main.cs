@@ -19,7 +19,8 @@ namespace Need_for_Sleep
     {
         public const string PLUGIN_GUID = "qqqbbb.subnautica.NeedForSleep";
         public const string PLUGIN_NAME = "Need for Sleep";
-        public const string PLUGIN_VERSION = "2.1.0";
+        public const string PLUGIN_VERSION = "2.2.0";
+
         public static ManualLogSource logger { get; private set; }
         static string configPath = Paths.ConfigPath + Path.DirectorySeparatorChar + PLUGIN_NAME + Path.DirectorySeparatorChar + "Config.cfg";
         public static ConfigFile config;
@@ -45,7 +46,7 @@ namespace Need_for_Sleep
             options = new OptionsMenu();
             OptionsPanelHandler.RegisterModOptions(options);
             GetLoadedMods();
-            Logger.LogInfo($"Plugin {PLUGIN_GUID} {PLUGIN_VERSION} is loaded ");
+            Logger.LogInfo($"Plugin {PLUGIN_NAME} {PLUGIN_VERSION} is loaded ");
         }
 
         private void LoadedGameSetup()
@@ -57,7 +58,7 @@ namespace Need_for_Sleep
         private void OnQuit()
         {
             //Logger.LogDebug("Need for Sleep OnQuit");
-            Patches.ResetVars();
+            Patches.ResetState();
         }
 
         public static void GetLoadedMods()

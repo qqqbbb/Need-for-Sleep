@@ -17,7 +17,7 @@ namespace Need_for_Sleep
     {
         public static bool sleeping;
         public static float speedMod = 1;
-        public static float updateInterval = 10;
+        const float updateInterval = 5;
         const float oneHourDuration = DayNightCycle.kDayLengthSeconds / 24f;
         static Survival survival;
         static float sleepDebt;
@@ -25,7 +25,6 @@ namespace Need_for_Sleep
         static Bed myBed;
         static Vector3 myBedLocalPos = new Vector3(0, -2, 0);
         static int layerCheckMask = ~(1 << LayerMask.NameToLayer("Player") | 1 << LayerMask.NameToLayer("Trigger"));
-        static float sleepDurationMult = 1;
         static HashSet<Button> delayableButtons = new HashSet<Button> { Button.MoveForward, Button.MoveBackward, Button.MoveLeft, Button.MoveRight, Button.MoveDown, Button.MoveUp, Button.Jump, Button.PDA, Button.Deconstruct, Button.LeftHand, Button.RightHand, Button.CycleNext, Button.CyclePrev, Button.Slot1, Button.Slot2, Button.Slot3, Button.Slot4, Button.Slot5, Button.AltTool, Button.Reload, Button.Sprint, Button.AutoMove, Button.LookDown, Button.LookUp, Button.LookRight, Button.LookLeft };
         private static bool seaglideEquipped;
         private static RadialBlurScreenFXController radialBlurControl;
@@ -41,9 +40,12 @@ namespace Need_for_Sleep
         private static float timeWalkStart;
         private static float timeSprintStart;
         private static float timeSwimStart;
+        static Transform cameraTransform;
+        static WaitForSeconds waitForUpdateInterval;
+        static float dayNightSpeed;
+        static Bed usedBed;
 
-
-        public static void ResetVars()
+        public static void ResetState()
         {
             speedMod = 1;
             sleepDebt = 0;
@@ -57,12 +59,16 @@ namespace Need_for_Sleep
         public static void Setup()
         {
             survival = Player.main.GetComponent<Survival>();
-            radialBlurControl = MainCamera.camera.GetComponent<RadialBlurScreenFXController>();
+            Camera camera = MainCamera.camera;
+            cameraTransform = camera.transform;
+            radialBlurControl = camera.GetComponent<RadialBlurScreenFXController>();
             Player.main.gameObject.AddComponent<SleepText>();
             Player.main.StartCoroutine(SpawnBed());
             //Main.logger.LogDebug($"Setup day {(float)DayNightCycle.main.GetDay()} timewokeUp {timeWokeUp}");
             timeWokeUp = GetTimeWokeUp();
             CoroutineHost.StartCoroutine(HandleSleepDebt());
+            dayNightSpeed = DayNightCycle.main._dayNightSpeed;
+            waitForUpdateInterval = new WaitForSeconds(GetUpdateInterval());
             if (Main.enhancedSleepLoaded)
             {
                 BasicText message = new BasicText();
@@ -73,6 +79,15 @@ namespace Need_for_Sleep
             //AddDebug("Setup time " + day);
             //AddDebug("Setup time woke up " + Player.main.timeLastSleep);
             //AddDebug("Setup timeAwake " + timeAwake);
+        }
+
+        private static float GetUpdateInterval()
+        {
+            float ui = updateInterval / DayNightCycle.main._dayNightSpeed;
+            if (ui < 1)
+                ui = 1;
+
+            return ui;
         }
 
         public static float GetSleepDebt()
@@ -88,10 +103,7 @@ namespace Need_for_Sleep
             if (lookingAtBed)
                 return false;
 
-            if (IsStandingStill() == false)
-                return false;
-
-            float x = MainCamera.camera.transform.rotation.eulerAngles.x;
+            float x = cameraTransform.rotation.eulerAngles.x;
             return x > 80 && x < 90;
         }
 
@@ -248,6 +260,8 @@ namespace Need_for_Sleep
             UpdateSleepDebt();
             sleeping = true;
             SleepText.Show();
+            //AddDebug($"StartSleep calorieBurnMultSleep {Config.calorieBurnMultSleep.Value}");
+
             if (Config.calorieBurnMultSleep.Value > 0)
                 Player.main.StartCoroutine(HandleSleep());
         }
@@ -273,20 +287,22 @@ namespace Need_for_Sleep
             myBed.transform.rotation = newRot;
         }
 
-        private static Vector3 GetBedPosition()
-        {
-            Vector3 playerPos = Player.main.transform.position;
-            return new Vector3(playerPos.x, playerPos.y - 2, playerPos.z);
-        }
-
         public static IEnumerator HandleSleepDebt()
         {
             while (true)
             {
-                yield return new WaitUntil(() => sleeping == false);
-                UpdateSleepDebt();
-                //DebugSleepDebt();
-                yield return new WaitForSeconds(updateInterval);
+                //AddDebug("HandleSleepDebt");
+                if (sleeping == false)
+                {
+                    UpdateSleepDebt();
+                    //DebugSleepDebt();
+                }
+                if (dayNightSpeed != DayNightCycle.main._dayNightSpeed)
+                {
+                    waitForUpdateInterval = new WaitForSeconds(GetUpdateInterval());
+                    dayNightSpeed = DayNightCycle.main._dayNightSpeed;
+                }
+                yield return waitForUpdateInterval;
             }
         }
 
@@ -296,9 +312,9 @@ namespace Need_for_Sleep
             {
                 float day = (float)DayNightCycle.main.GetDay();
                 float timeAwake = day - timeWokeUp;
-                AddDebug($"day {day} threshold {GetSleepDebtThreshold()}");
-                AddDebug("timeWokeUp " + timeWokeUp);
-                AddDebug("timeAwake " + timeAwake);
+                //AddDebug($"day {day} threshold {GetSleepDebtThreshold()}");
+                //AddDebug("timeWokeUp " + timeWokeUp);
+                //AddDebug("timeAwake " + timeAwake);
                 AddDebug("CoffeeMod " + GetCoffeeMod());
                 if (sleepDebt > 0)
                 {
@@ -315,7 +331,7 @@ namespace Need_for_Sleep
         {
             while (sleeping)
             {
-                //AddDebug("HandleSleepDebtSleep FrozenStats " + Player.main.IsFrozenStats());
+                //AddDebug("HandleSleep FrozenStats " + Player.main.IsFrozenStats());
                 if (DayNightCycle.main.timePassedAsFloat > hungerUpdateTime)
                 {
                     UpdateHungerSleep();
@@ -466,7 +482,7 @@ namespace Need_for_Sleep
             TaskResult<GameObject> result = new TaskResult<GameObject>();
             yield return CraftData.InstantiateFromPrefabAsync(TechType.NarrowBed, result);
             GameObject bedGO = result.Get();
-            bedGO.transform.position = GetBedPosition();
+            bedGO.transform.position = Player.main.transform.position + myBedLocalPos;
             bedGO.name = "NeedForSleepBed";
             Transform t = bedGO.transform.Find("collisions");
             UnityEngine.Object.Destroy(t.gameObject);
@@ -505,6 +521,7 @@ namespace Need_for_Sleep
         [HarmonyPatch(typeof(Bed))]
         private class Bed_Patch
         {
+
             [HarmonyPrefix, HarmonyPatch("GetCanSleep")]
             public static void GetCanSleepPrefix(Bed __instance, Player player, ref bool notify, ref bool __result)
             {
@@ -545,7 +562,7 @@ namespace Need_for_Sleep
             [HarmonyPrefix, HarmonyPatch("EnterInUseMode")]
             public static void EnterInUseModePrefix(Bed __instance, Player player)
             {
-                sleepDurationMult = GetSleepDurationMult(__instance);
+                usedBed = __instance;
             }
             [HarmonyPostfix, HarmonyPatch("EnterInUseMode")]
             public static void EnterInUseModePostfix(Bed __instance, Player player)
@@ -584,7 +601,7 @@ namespace Need_for_Sleep
             }
 
             [HarmonyPrefix, HarmonyPatch("GetSide")]
-            public static bool GetSidePretfix(Bed __instance, Player player, ref BedSide __result)
+            public static bool GetSidePrefix(Bed __instance, Player player, ref BedSide __result)
             {
                 if (__instance == myBed)
                 {
@@ -723,7 +740,7 @@ namespace Need_for_Sleep
             [HarmonyPrefix, HarmonyPatch("SkipTime")]
             static void SkipTimePrefix(DayNightCycle __instance, ref float timeAmount, ref float skipDuration, ref bool __result)
             {
-                skipDuration = Config.hoursNeedToSleep.Value * sleepDurationMult; // game hour is 1 real second
+                skipDuration = Config.hoursNeedToSleep.Value * GetSleepDurationMult(usedBed); // game hour is 1 real second
                 timeAmount = skipDuration * oneHourDuration;
                 //AddDebug(" SkipTime amount " + timeAmount + " duration " + skipDuration);
             }
@@ -1028,7 +1045,7 @@ namespace Need_for_Sleep
                 return 1;
 
             float mod = DayNightCycle.main.timePassedAsFloat - coffeeTime;
-            return Util.MapTo01range(mod, 0, oneHourDuration);
+            return Util.MapTo01range(mod, 0, oneHourDuration * Config.coffeeHours.Value);
         }
 
 

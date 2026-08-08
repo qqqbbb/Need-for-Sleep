@@ -1,4 +1,18 @@
 {
+  "NS_sleep_hours": "Hours you need to sleep",
+  "NS_sleep_hours_desc": "Number of hours you need to sleep every 24 hours",
+  "NS_calorie_burn_rate": "Calorie burn rate multiplier when sleeping",
+  "NS_sleep_anytime": "Can go to sleep anytime",
+  "NS_sleep_anytime_desc": "By default you can fall sleep only when tired. You will be able to fall sleep anytime you want if this is on.",
+  "NS_show_time_tired_bed": "Show time you will get tired when looking at bed",
+  "NS_show_time_tired_button": "Show time you will get tired when pressing sleep button",
+  "NS_turning": "Turning while on foot is less responsive when sleep-deprived",
+  "NS_blurry_vision": "Blurry vision when sleep-deprived",
+  "NS_movement": "Slower movement when sleep-deprived",
+  "NS_coffee_hours": "Coffee effect hours",
+  "NS_coffee_hours_desc": "Coffee will reduce effects of sleep deprevation for this number of hours",
+  "NS_sleep_button": "Sleep button",
+
   "NS_too_hungry_to_sleep": "You are too hungry to sleep",
   "NS_too_thirsty_to_sleep": "You are too thirsty to sleep",
   "NS_tired": "You are tired. You should go to sleep.",
