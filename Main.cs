@@ -19,7 +19,7 @@ namespace Need_for_Sleep
     {
         public const string PLUGIN_GUID = "qqqbbb.subnautica.NeedForSleep";
         public const string PLUGIN_NAME = "Need for Sleep";
-        public const string PLUGIN_VERSION = "2.2.0";
+        public const string PLUGIN_VERSION = "2.2.1";
 
         public static ManualLogSource logger { get; private set; }
         static string configPath = Paths.ConfigPath + Path.DirectorySeparatorChar + PLUGIN_NAME + Path.DirectorySeparatorChar + "Config.cfg";

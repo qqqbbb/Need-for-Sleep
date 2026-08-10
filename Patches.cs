@@ -66,9 +66,9 @@ namespace Need_for_Sleep
             Player.main.StartCoroutine(SpawnBed());
             //Main.logger.LogDebug($"Setup day {(float)DayNightCycle.main.GetDay()} timewokeUp {timeWokeUp}");
             timeWokeUp = GetTimeWokeUp();
-            CoroutineHost.StartCoroutine(HandleSleepDebt());
             dayNightSpeed = DayNightCycle.main._dayNightSpeed;
             waitForUpdateInterval = new WaitForSeconds(GetUpdateInterval());
+            CoroutineHost.StartCoroutine(HandleSleepDebt());
             if (Main.enhancedSleepLoaded)
             {
                 BasicText message = new BasicText();
@@ -83,6 +83,11 @@ namespace Need_for_Sleep
 
         private static float GetUpdateInterval()
         {
+            if (DayNightCycle.main._dayNightSpeed <= 0)
+            {
+                //AddDebug("_dayNightSpeed <= 0");
+                return updateInterval;
+            }
             float ui = updateInterval / DayNightCycle.main._dayNightSpeed;
             if (ui < 1)
                 ui = 1;
@@ -127,6 +132,9 @@ namespace Need_for_Sleep
 
         private static bool CanSleep()
         {
+            if (setupDone == false || Time.timeScale == 0)
+                return false;
+
             if (IsStandingStill() == false)
                 return false;
 
@@ -150,7 +158,7 @@ namespace Need_for_Sleep
         private static bool IsStandingStill()
         {
             Player player = Player.main;
-            return setupDone && Time.timeScale > 0 && player.GetMode() == Player.Mode.Normal && player.IsUnderwaterForSwimming() == false && player.cinematicModeActive == false && player.pda.isInUse == false && player.groundMotor.grounded && player.playerController.velocity == default && DayNightCycle.main.IsInSkipTimeMode() == false;
+            return player.GetMode() == Player.Mode.Normal && player.IsUnderwaterForSwimming() == false && player.cinematicModeActive == false && player.pda.isInUse == false && player.groundMotor.grounded && player.playerController.velocity == default && DayNightCycle.main.IsInSkipTimeMode() == false;
         }
 
         private static bool IsTooThirstyToSleep()
@@ -291,7 +299,7 @@ namespace Need_for_Sleep
         {
             while (true)
             {
-                //AddDebug("HandleSleepDebt");
+                //AddDebug("HandleSleepDebt " + GetUpdateInterval());
                 if (sleeping == false)
                 {
                     UpdateSleepDebt();
@@ -380,7 +388,7 @@ namespace Need_for_Sleep
                         lookingAtBed = false;
                 }
                 bool lookingAtGround = IsLookingAtGround();
-                if (lookingAtGround)
+                if (lookingAtGround && Player.main.cinematicModeActive == false)
                     OnBedHandHover(myBed);
 
                 if (GameInput.GetButtonDown(OptionsMenu.sleepButton) == false)
@@ -490,8 +498,7 @@ namespace Need_for_Sleep
             UnityEngine.Object.Destroy(t.gameObject);
             myBed = bedGO.GetComponent<Bed>();
             bedGO.transform.SetParent(Player.main.transform);
-            var components = bedGO.GetComponents<Component>();
-            foreach (var c in components)
+            foreach (Component c in bedGO.GetComponents<Component>())
             {
                 if (c is Bed || c is Transform)
                     continue;
@@ -521,7 +528,6 @@ namespace Need_for_Sleep
         [HarmonyPatch(typeof(Bed))]
         private class Bed_Patch
         {
-
             [HarmonyPrefix, HarmonyPatch("GetCanSleep")]
             public static void GetCanSleepPrefix(Bed __instance, Player player, ref bool notify, ref bool __result)
             {
@@ -582,7 +588,7 @@ namespace Need_for_Sleep
                     Quaternion newRot = Quaternion.identity;
                     newRot.eulerAngles = new Vector3(0, myBed.transform.rotation.eulerAngles.y + 180, 0);
                     myBed.transform.rotation = newRot; // face the same direction on wake up
-                    player.StartCoroutine(AttachBedToPlayer(__instance, player));
+                    player.StartCoroutine(AttachBedToPlayer(player));
                 }
             }
 
@@ -591,13 +597,13 @@ namespace Need_for_Sleep
                 Player.main.transform.position = playerPosBeforeSleep;
             }
 
-            private static IEnumerator AttachBedToPlayer(Bed bed, Player player)
+            private static IEnumerator AttachBedToPlayer(Player player)
             {
                 yield return new WaitUntil(() => player.cinematicModeActive == false);
                 //AddDebug($"AttachToPlayer ");
                 RestorePlayerPos(player);
-                bed.transform.SetParent(player.transform);
-                bed.transform.localPosition = myBedLocalPos;
+                myBed.transform.SetParent(player.transform);
+                myBed.transform.localPosition = myBedLocalPos;
             }
 
             [HarmonyPrefix, HarmonyPatch("GetSide")]
